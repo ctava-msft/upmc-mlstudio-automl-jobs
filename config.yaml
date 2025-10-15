@@ -22,6 +22,11 @@ authentication:
   # For local execution: Use 'interactive' or 'cli' method
   # Your user account also needs "Storage Blob Data Contributor" on the storage account
 
+# Environment configuration
+environment:
+  name: "automl-sdk-v2-env"  # Name of the environment to create/reuse
+  conda_file: "conda_env_v_1_0_0.yml"  # Path to conda environment file
+
 experiment:
   name: "secondary-cvd-risk"
   description: "AutoML classification of secondary cardiovascular risk prediction with comprehensive feature engineering"

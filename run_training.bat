@@ -63,16 +63,16 @@ if errorlevel 1 (
 )
 
 echo.
-echo Checking Azure ML SDK...
-python -c "import azureml.core; print('Azure ML SDK version:', azureml.core.VERSION)"
+echo Checking Azure ML SDK v2...
+python -c "from azure.ai.ml import __version__; print('Azure ML SDK v2 version:', __version__)"
 
 if errorlevel 1 (
     echo.
-    echo ERROR: Azure ML SDK not found in environment
+    echo ERROR: Azure ML SDK v2 not found in environment
     echo.
-    echo Please ensure the conda environment has Azure ML SDK installed:
+    echo Please ensure the conda environment has Azure ML SDK v2 installed:
     echo   conda activate automl_env
-    echo   pip install azureml-core
+    echo   pip install azure-ai-ml
     echo.
     pause
     exit /b 1
@@ -141,10 +141,10 @@ if defined ACCOUNT_NAME (
 
 echo.
 echo ======================================================================
-echo Starting Training
+echo Starting Training (Azure ML SDK v2)
 echo ======================================================================
 echo.
-python train.py --config config.yaml
+python train_v2.py --config config.yaml
 
 if errorlevel 1 (
     echo.

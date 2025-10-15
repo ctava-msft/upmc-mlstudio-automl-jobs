@@ -1,8 +1,16 @@
-azure-ai-ml
-azure-identity
-docker>=6.0.0
+# Azure ML SDK v2 (modern, better storage integration)
+azure-ai-ml>=1.11.0
+azure-identity>=1.12.0
+
+# Data handling
 numpy
 pandas
+scikit-learn
+
+# Configuration and utilities
 python-dotenv
 pyyaml
 requests
+
+# Optional: Docker for local deployment testing
+docker>=6.0.0

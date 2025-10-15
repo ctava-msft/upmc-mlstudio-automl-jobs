@@ -1,5 +1,5 @@
-# Conda environment specification. The dependencies defined in this file will
-# be automatically provisioned for runs with userManagedDependencies=False.
+# Conda environment specification for Azure ML SDK v2
+# Modern SDK with better storage integration and simplified APIs
 
 # Details about the Conda environment file format:
 # https://conda.io/docs/user-guide/tasks/manage-environments.html#create-env-file-manually
@@ -7,23 +7,31 @@
 name: automl_env
 dependencies:
   # The python interpreter version.
-  # Currently Azure ML only supports 3.8 and later.
+  # Currently Azure ML supports 3.8 and later.
 - python=3.9.22
-- pip=24.2          # added – required when pip section is present
-- cmake>=3.27       # added – needed to build lightgbm wheel
-- libgomp           # added – supplies the OpenMP runtime searched by CMake
+- pip=24.2          # required when pip section is present
+- cmake>=3.27       # needed to build lightgbm wheel
+- libgomp           # supplies the OpenMP runtime searched by CMake
 - pip:
-  - azureml-train-automl-runtime==1.60.0
-  - inference-schema
+  # Azure ML SDK v2 - Modern API with better storage integration
+  - azure-ai-ml>=1.11.0
+  - azure-identity>=1.12.0
+  
+  # Machine Learning libraries
+  - scikit-learn==1.5.1
   - xgboost<=1.5.2
   - prophet==1.1.4
-  - azureml-interpret==1.60.0
-  - azureml-defaults==1.60.0
-- numpy==1.23.5
-- pandas==1.5.3
-- scikit-learn==1.5.1
-- holidays==0.70
-- psutil==5.9.3
+  
+  # Data manipulation
+  - numpy==1.23.5
+  - pandas==1.5.3
+  
+  # Utilities
+  - python-dotenv
+  - pyyaml
+  - holidays==0.70
+  - psutil==5.9.3
+  
 channels:
 - conda-forge
 - anaconda
