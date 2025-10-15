@@ -1,0 +1,66 @@
+# Example Configuration: Binary Classification
+# Simple configuration template for binary classification tasks
+
+experiment:
+  name: "classification-experiment"
+  description: "AutoML binary classification model"
+
+data:
+  input_path: "./data/your_data.csv"
+  dataset_name: "classification_dataset"
+  dataset_description: "Classification training dataset"
+  label_column: "target"  # Change to your target column
+  
+  columns_to_drop: []
+  
+  validation:
+    check_missing_values: true
+    max_missing_percentage: 50
+    check_duplicates: true
+
+feature_engineering:
+  enabled: false  # Set to true and configure as needed
+
+compute:
+  cluster_name: "cpu-cluster"
+
+automl:
+  task: "classification"  # classification, regression, or forecasting
+  primary_metric: "auc_weighted"  # For binary classification
+  # Other options for classification: accuracy, precision_score_weighted, recall_score_weighted
+  
+  training:
+    experiment_timeout_minutes: 60
+    iteration_timeout_minutes: 15
+    max_concurrent_iterations: 4
+    max_cores_per_iteration: -1
+    enable_early_stopping: true
+    n_cross_validations: 5
+  
+  featurization:
+    mode: "auto"
+  
+  models:
+    allowed: []
+    blocked: []
+  
+  ensemble:
+    stack_ensemble_iterations: 5
+    ensemble_iterations: 5
+  
+  onnx:
+    enable_onnx_compatible_models: false
+
+output:
+  save_preprocessed_data: true
+  preprocessed_data_path: "./data/preprocessed"
+  
+  register_model: true
+  model_name: "classification_model"
+  model_tags:
+    type: "automl"
+    framework: "azure-ml"
+  
+  log_level: "INFO"
+  log_to_file: true
+  log_file_path: "./logs/training.log"

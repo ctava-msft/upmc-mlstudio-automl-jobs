@@ -1,0 +1,6 @@
+paths:
+  - file: ./surgical-case-time.csv
+transformations:
+  - read_delimited:
+        delimiter: ','
+        encoding: 'ascii'

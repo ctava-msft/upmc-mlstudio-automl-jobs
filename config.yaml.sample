@@ -1,0 +1,169 @@
+# Azure Machine Learning AutoML Training Configuration
+# This file controls all aspects of model training, data preprocessing, and feature engineering
+
+# Experiment Configuration
+experiment:
+  name: "automl-experiment"  # Name of the experiment in Azure ML
+  description: "AutoML training with configurable feature engineering"
+  
+# Data Configuration
+data:
+  # Path to input data (relative to project root or absolute path)
+  input_path: "./data/input_data.csv"
+  
+  # Dataset registration in Azure ML
+  dataset_name: "training_dataset"
+  dataset_description: "Training dataset with custom preprocessing"
+  
+  # Column to predict
+  label_column: "target_column"  # Change to your target column name
+  
+  # Columns to drop before training (optional)
+  columns_to_drop: []
+    # - "ID"
+    # - "TIMESTAMP"
+  
+  # Data validation
+  validation:
+    check_missing_values: true
+    max_missing_percentage: 50  # Drop columns with >50% missing values
+    check_duplicates: true
+
+# Feature Engineering Configuration
+feature_engineering:
+  enabled: true
+  
+  # Binning transformations
+  binning:
+    enabled: false
+    features:
+      # Example: Bin a continuous variable into categories
+      # - column: "case_time_minutes"
+      #   bins: [0, 60, 120, 180, 300]
+      #   labels: ["Short", "Medium", "Long", "Very Long"]
+      #   new_column: "case_time_bin"
+  
+  # Scaling transformations
+  scaling:
+    enabled: false
+    method: "standard"  # Options: standard, minmax, robust
+    columns: []
+      # - "AGE"
+      # - "BMI_IP"
+  
+  # Categorical encoding
+  encoding:
+    enabled: false
+    method: "onehot"  # Options: onehot, label, target
+    columns: []
+      # - "SEX"
+      # - "RACE"
+  
+  # Datetime features
+  datetime_features:
+    enabled: false
+    columns: []
+      # - column: "ADMITDATE"
+      #   extract: ["year", "month", "day", "dayofweek"]
+  
+  # Interaction features
+  interactions:
+    enabled: false
+    feature_pairs: []
+      # - ["feature1", "feature2"]
+  
+  # Polynomial features
+  polynomial:
+    enabled: false
+    degree: 2
+    columns: []
+  
+  # Custom transformations (Python expressions)
+  custom:
+    enabled: false
+    transformations: []
+      # - name: "bmi_category"
+      #   expression: "pd.cut(df['BMI_IP'], bins=[0, 18.5, 25, 30, 100], labels=['Underweight', 'Normal', 'Overweight', 'Obese'])"
+      # - name: "age_squared"
+      #   expression: "df['AGE'] ** 2"
+
+# Compute Configuration
+compute:
+  cluster_name: "cpu-cluster"
+  
+# AutoML Configuration
+automl:
+  # Task type: regression, classification, forecasting
+  task: "classification"
+  
+  # Primary metric to optimize
+  # Regression: r2_score, normalized_root_mean_squared_error, spearman_correlation, normalized_mean_absolute_error
+  # Classification: accuracy, AUC_weighted, precision_score_weighted, recall_score_weighted
+  primary_metric: "auc_weighted"
+  
+  # Training settings
+  training:
+    experiment_timeout_minutes: 60
+    iteration_timeout_minutes: 15
+    max_concurrent_iterations: 4
+    max_cores_per_iteration: -1  # -1 means use all available cores
+    enable_early_stopping: true
+    n_cross_validations: 5
+    validation_size: 0.2  # Used if cross-validation is not set
+  
+  # Featurization settings
+  featurization:
+    mode: "auto"  # Options: auto, custom, off
+    # Transformers to block (when mode is custom)
+    blocked_transformers: []
+      # - "Imputer"
+      # - "OneHotEncoder"
+      # - "TextTargetEncoder"
+    
+    # Column purposes (override automatic detection)
+    column_purposes: {}
+      # column_name: "Numeric"  # Options: Numeric, Categorical, DateTime
+    
+    # Drop columns with specific characteristics
+    drop_columns: []
+    
+    # Transformer parameters
+    transformer_params: {}
+      # Imputer:
+      #   strategy: "mean"  # Options: mean, median, most_frequent
+  
+  # Model allowlist/blocklist
+  models:
+    allowed: []  # If empty, all models are allowed
+      # - "LightGBM"
+      # - "XGBoostRegressor"
+      # - "RandomForest"
+    
+    blocked: []  # Models to exclude
+      # - "ElasticNet"
+  
+  # Ensemble settings
+  ensemble:
+    stack_ensemble_iterations: 5
+    ensemble_iterations: 5
+  
+  # ONNX export
+  onnx:
+    enable_onnx_compatible_models: false
+
+# Output Configuration
+output:
+  save_preprocessed_data: true
+  preprocessed_data_path: "./data/preprocessed"
+  
+  # Model registration
+  register_model: true
+  model_name: "automl_model"
+  model_tags:
+    type: "automl"
+    framework: "azure-ml"
+  
+  # Logging
+  log_level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+  log_to_file: true
+  log_file_path: "./logs/training.log"

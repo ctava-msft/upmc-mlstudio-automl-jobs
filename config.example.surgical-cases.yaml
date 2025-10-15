@@ -1,0 +1,89 @@
+# Example Configuration: Surgical Cases Prediction
+# Specific example for surgical case time prediction with feature engineering
+
+experiment:
+  name: "surgical-cases-automl"
+  description: "Predict surgical case duration with custom binning"
+
+data:
+  input_path: "./data/surgical_case_time/surgical-case-time.csv"
+  dataset_name: "surgical_cases"
+  dataset_description: "Surgical cases data with case time prediction"
+  label_column: "case_time_minutes"
+  
+  columns_to_drop: []
+    # Add any ID or non-predictive columns here
+  
+  validation:
+    check_missing_values: true
+    max_missing_percentage: 50
+    check_duplicates: true
+
+feature_engineering:
+  enabled: true
+  
+  binning:
+    enabled: true
+    features:
+      - column: "case_time_minutes"
+        bins: [0, 60, 120, 180, 300]
+        labels: ["Short", "Medium", "Long", "Very Long"]
+        new_column: "case_time_bin"
+  
+  datetime_features:
+    enabled: false
+    # Uncomment and configure if you have date columns
+    # columns:
+    #   - column: "surgery_date"
+    #     extract: ["year", "month", "dayofweek"]
+  
+  interactions:
+    enabled: false
+  
+  custom:
+    enabled: false
+
+compute:
+  cluster_name: "cpu-cluster"
+
+automl:
+  task: "regression"
+  primary_metric: "rmse"
+  
+  training:
+    experiment_timeout_minutes: 60
+    iteration_timeout_minutes: 15
+    max_concurrent_iterations: 4
+    max_cores_per_iteration: -1
+    enable_early_stopping: true
+    n_cross_validations: 5
+  
+  featurization:
+    mode: "auto"
+  
+  models:
+    allowed: []
+    blocked: []
+  
+  ensemble:
+    stack_ensemble_iterations: 5
+    ensemble_iterations: 5
+  
+  onnx:
+    enable_onnx_compatible_models: false
+
+output:
+  save_preprocessed_data: true
+  preprocessed_data_path: "./data/preprocessed"
+  
+  register_model: true
+  model_name: "surgical_case_time_model"
+  model_tags:
+    type: "automl"
+    framework: "azure-ml"
+    use_case: "surgical-case-prediction"
+    version: "1.0"
+  
+  log_level: "INFO"
+  log_to_file: true
+  log_file_path: "./logs/training.log"

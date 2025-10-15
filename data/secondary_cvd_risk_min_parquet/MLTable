@@ -1,0 +1,5 @@
+paths:
+  - file: ./secondary-cvd-risk.parquet
+transformations:
+  - read_parquet:
+        include_path_column: false

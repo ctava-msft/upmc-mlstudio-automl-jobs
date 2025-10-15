@@ -1,0 +1,137 @@
+# Example Configuration: Advanced Feature Engineering
+# This example demonstrates multiple feature engineering techniques
+# Based on a healthcare risk prediction scenario but applicable to similar problems
+
+# Authentication configuration
+authentication:
+  method: "cli"  # Options: "interactive", "msi", "uami", "cli"
+  # Note: 
+  # - "interactive": Opens browser for login (recommended for local development)
+  # - "cli": Uses Azure CLI credentials (run 'az login' first) ✓ ACTIVE
+  # - "msi": Uses system-assigned managed identity (only works on Azure VMs/services)
+  # - "uami": Uses user-assigned managed identity (only works on Azure VMs/services)
+  
+  # User-Assigned Managed Identity (UAMI) - for reference
+  # This UAMI is configured on the Azure ML workspace and compute clusters
+  # It will be used automatically during training execution on Azure compute
+  managed_identity_client_id: "552118d0-4827-43fb-a5e5-dc4fe16db3d6"
+  # Roles assigned to this UAMI:
+  # - "AI Administrator" on the Azure ML workspace
+  # - "Storage Blob Data Contributor" on the workspace's storage account
+  
+  # For local execution: Use 'interactive' or 'cli' method
+  # Your user account also needs "Storage Blob Data Contributor" on the storage account
+
+experiment:
+  name: "secondary-cvd-risk"
+  description: "AutoML classification of secondary cardiovascular risk prediction with comprehensive feature engineering"
+
+data:
+  # Option 1: Use existing registered dataset (ACTIVE - recommended for production)
+  # NOTE: Requires storage authentication to be configured
+  use_existing_dataset: true
+  dataset_name: "secondary-cvd-risk"  # Name of registered dataset in Azure ML
+  dataset_version: "1"  # Use "latest" or specify version number like: 1
+  # dataset_id: "azureml:secondary-cvd-risk:1"  # Optional: Full dataset ID (azureml:name:version)
+  
+  # Option 2: Upload from local file (INACTIVE)
+  # use_existing_dataset: false
+  # input_path: "./data/secondary_cvd_risk_min/secondary-cvd-risk.csv"
+  # dataset_name: "secondary_cvd_risk_min"
+  # upload_to_datastore: false  # Set to true for timestamped paths
+  
+  dataset_description: "secondary cardiovascular risk prediction dataset"
+  label_column: "mace"  # Change to your actual target column name
+  
+  columns_to_drop:
+    # Example: drop ID columns or other non-predictive features
+    # - "PATIENT_ID"
+    # - "RECORD_ID"
+  
+  validation:
+    check_missing_values: true
+    max_missing_percentage: 50
+    check_duplicates: true
+
+feature_engineering:
+  enabled: true
+  
+  binning:
+    enabled: true
+    features:
+      - column: "AGE"
+        bins: [0, 40, 55, 70, 120]
+        labels: ["Young", "Middle", "Senior", "Elderly"]
+        new_column: "AGE_GROUP"
+      
+      - column: "BMI_IP"
+        bins: [0, 18.5, 25, 30, 100]
+        labels: ["Underweight", "Normal", "Overweight", "Obese"]
+        new_column: "BMI_CATEGORY"
+  
+  datetime_features:
+    enabled: true
+    columns:
+      - column: "ADMITDATE"
+        extract: ["year", "month", "dayofweek"]
+      - column: "DISCHARGEDATE"
+        extract: ["year", "month", "dayofweek"]
+  
+  interactions:
+    enabled: true
+    feature_pairs:
+      - ["AGE", "BMI_IP"]
+      - ["SBP_FIRST", "DBP_FIRST"]
+  
+  custom:
+    enabled: true
+    transformations:
+      - name: "age_bmi_ratio"
+        expression: "df['AGE'] / (df['BMI_IP'] + 1)"  # +1 to avoid division by zero
+      
+      - name: "bp_diff"
+        expression: "df['SBP_LAST'] - df['SBP_FIRST']"
+
+compute:
+  cluster_name: "automl"
+
+automl:
+  task: "classification"
+  primary_metric: "auc_weighted"
+  
+  training:
+    experiment_timeout_minutes: 120
+    iteration_timeout_minutes: 20
+    max_concurrent_iterations: 4
+    max_cores_per_iteration: -1
+    enable_early_stopping: true
+    n_cross_validations: 5
+  
+  featurization:
+    mode: "auto"
+  
+  models:
+    allowed: []  # Allow all models
+    blocked: []  # Don't block any models
+  
+  ensemble:
+    stack_ensemble_iterations: 5
+    ensemble_iterations: 5
+  
+  onnx:
+    enable_onnx_compatible_models: false
+
+output:
+  save_preprocessed_data: true
+  preprocessed_data_path: "./data/preprocessed"
+  
+  register_model: true
+  model_name: "secondary_cvd_risk_model"
+  model_tags:
+    type: "automl"
+    framework: "azure-ml"
+    use_case: "secondary-cvd-risk"
+  
+  log_level: "INFO"
+  log_to_file: true
+  log_file_path: "./logs/training.log"

@@ -1,0 +1,80 @@
+# Example Configuration: Time Series Forecasting
+# Generic template for time series forecasting problems
+
+experiment:
+  name: "timeseries-experiment"
+  description: "AutoML time series forecasting model"
+
+data:
+  input_path: "./data/your_timeseries_data.csv"
+  dataset_name: "timeseries_dataset"
+  dataset_description: "Time series forecasting dataset"
+  label_column: "target"  # Change to your target column name
+  
+  columns_to_drop: []
+    # - "id"
+    # - "notes"
+  
+  validation:
+    check_missing_values: true
+    max_missing_percentage: 50
+    check_duplicates: true
+
+feature_engineering:
+  enabled: false  # Set to true and configure transformations as needed
+  # Note: For time series, be careful with feature engineering that might leak future information
+
+compute:
+  cluster_name: "cpu-cluster"
+
+automl:
+  task: "forecasting"
+  primary_metric: "normalized_root_mean_squared_error"
+  # Other forecasting metrics: r2_score, normalized_mean_absolute_error
+  
+  training:
+    experiment_timeout_minutes: 60
+    iteration_timeout_minutes: 15
+    max_concurrent_iterations: 4
+    max_cores_per_iteration: -1
+    enable_early_stopping: true
+    n_cross_validations: 5
+  
+  featurization:
+    mode: "auto"
+    # Time series specific settings would go here
+    # Note: Azure ML AutoML handles time series featurization automatically
+  
+  models:
+    allowed: []  # Leave empty to allow all forecasting models
+    blocked: []  # Add model names to exclude specific models
+    # Common forecasting models: Prophet, ARIMA, AutoARIMA, ExponentialSmoothing, etc.
+  
+  ensemble:
+    stack_ensemble_iterations: 5
+    ensemble_iterations: 5
+  
+  onnx:
+    enable_onnx_compatible_models: false
+
+output:
+  save_preprocessed_data: true
+  preprocessed_data_path: "./data/preprocessed"
+  
+  register_model: true
+  model_name: "timeseries_model"
+  model_tags:
+    type: "automl"
+    framework: "azure-ml"
+    task: "forecasting"
+  
+  log_level: "INFO"
+  log_to_file: true
+  log_file_path: "./logs/training.log"
+
+# Note: For time series forecasting, you may need additional configuration:
+# - time_column_name: Name of the time/date column
+# - forecast_horizon: How many time steps ahead to predict
+# - time_series_id_column_names: Columns that define different time series
+# - freq: Frequency of the time series (e.g., 'D' for daily, 'H' for hourly)
+# These would need to be added to the AutoML config in train.py for full forecasting support

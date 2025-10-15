@@ -1,0 +1,8 @@
+azure-ai-ml
+azure-identity
+docker>=6.0.0
+numpy
+pandas
+python-dotenv
+pyyaml
+requests

@@ -1,0 +1,87 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Azure and sensitive data
+.env
+.azure/
+config.json
+
+# Data files (uncomment specific patterns if needed)
+*.csv
+*.parquet
+*.xlsx
+*.xls
+data/preprocessed/
+temp_preprocessed_*.csv
+
+# Models and artifacts
+models/*/
+*.pkl
+*.h5
+*.onnx
+*.joblib
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.old
+*.zip
+.history
+
+# MLflow
+mlruns/
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb
+
+# Azure ML
+.azureml/
+
+# Keep examples and templates
+!config.yaml
+!config.example*.yaml
+!.env.sample
+!requirements.txt
+!README.md
+!readme.md
