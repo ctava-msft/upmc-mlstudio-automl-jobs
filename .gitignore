@@ -78,6 +78,13 @@ mlruns/
 # Azure ML
 .azureml/
 
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+test-results.xml
+coverage.xml
+
 # Keep examples and templates
 !config.yaml
 !config.example*.yaml
