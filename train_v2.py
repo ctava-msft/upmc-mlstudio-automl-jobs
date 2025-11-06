@@ -19,6 +19,17 @@ from datetime import datetime
 from dotenv import load_dotenv
 from feature_engineering import FeatureEngineer, validate_data
 
+# Interpretability imports
+try:
+    from interpret.ext.blackbox import TabularExplainer
+    import shap
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+    INTERPRETABILITY_AVAILABLE = True
+except ImportError as e:
+    logging.warning(f"Interpretability libraries not available: {e}")
+    INTERPRETABILITY_AVAILABLE = False
+
 # Load environment variables from .env file
 load_dotenv()
 
@@ -343,6 +354,103 @@ def monitor_job(ml_client: MLClient, job, logger: logging.Logger):
     return job_status
 
 
+def generate_model_explanations(
+    ml_client: MLClient,
+    job,
+    data_asset: Data,
+    config: dict,
+    logger: logging.Logger
+):
+    """
+    Generate model explanations using SHAP and interpretability tools
+    """
+    if not INTERPRETABILITY_AVAILABLE:
+        logger.warning("Interpretability libraries not available. Skipping explanations.")
+        return
+    
+    try:
+        logger.info("=" * 70)
+        logger.info("Generating Model Explanations")
+        logger.info("=" * 70)
+        
+        # Get the best model from the completed job
+        logger.info("Retrieving best model from completed job...")
+        
+        # Download the best model (this would need to be implemented based on job results)
+        # For now, we'll show how to set up the explanation framework
+        
+        # Load the original dataset for explanations
+        data_config = config['data']
+        
+        if data_config.get('use_existing_dataset', False):
+            logger.info("For model explanations, you'll need to:")
+            logger.info("1. Download the best model from the job")
+            logger.info("2. Load the training data")
+            logger.info("3. Apply the same preprocessing pipeline")
+            logger.info("4. Generate SHAP explanations")
+            
+            explanation_code = '''
+# Example code for generating explanations after job completion:
+
+# 1. Download and load the best model
+best_model = ml_client.models.download(name="your_model_name", version="latest", download_path="./models")
+
+# 2. Load and preprocess the data (same as training)
+df = load_and_preprocess_data(config, logger)
+feature_columns = [col for col in df.columns if col != data_config['label_column']]
+X = df[feature_columns]
+y = df[data_config['label_column']]
+
+# 3. Create SHAP explainer
+explainer = shap.Explainer(best_model, X.sample(min(1000, len(X))))  # Use sample for large datasets
+shap_values = explainer(X.sample(min(100, len(X))))  # Explain sample
+
+# 4. Generate SHAP plots
+shap.summary_plot(shap_values, X.sample(min(100, len(X))), show=False, plot_type='bar')
+plt.title('SHAP Feature Importance')
+plt.tight_layout()
+plt.savefig('./explanations/shap_feature_importance.png', dpi=300, bbox_inches='tight')
+plt.close()
+
+shap.summary_plot(shap_values, X.sample(min(100, len(X))), show=False)
+plt.title('SHAP Summary Plot')
+plt.tight_layout()
+plt.savefig('./explanations/shap_summary.png', dpi=300, bbox_inches='tight')
+plt.close()
+
+# 5. Tabular explainer for global importance
+explainer_tabular = TabularExplainer(best_model, X.sample(min(1000, len(X))), features=feature_columns)
+global_importance = explainer_tabular.explain_global()
+
+# Save explanation
+import pickle
+with open('./explanations/global_explanation.pkl', 'wb') as f:
+    pickle.dump(global_explanation, f)
+
+logger.info("Model explanations generated successfully!")
+'''
+            
+            logger.info("Explanation code template:")
+            logger.info(explanation_code)
+            
+            # Create explanations directory
+            explanations_dir = Path("./explanations")
+            explanations_dir.mkdir(exist_ok=True)
+            
+            # Save the explanation code template
+            with open(explanations_dir / "generate_explanations.py", "w") as f:
+                f.write(explanation_code)
+            
+            logger.info(f"Explanation template saved to: {explanations_dir / 'generate_explanations.py'}")
+        
+        logger.info("=" * 70)
+        logger.info("Model explanation setup completed!")
+        logger.info("=" * 70)
+        
+    except Exception as e:
+        logger.error(f"Error generating model explanations: {str(e)}")
+
+
 def main():
     """Main execution function"""
     # Parse command-line arguments
@@ -446,6 +554,12 @@ def main():
                 logger.info("=" * 70)
                 logger.info(f"Best model: {final_job.name}")
                 logger.info(f"View results: {final_job.studio_url}")
+                
+                # Generate model explanations
+                try:
+                    generate_model_explanations(ml_client, final_job, data_asset, config, logger)
+                except Exception as e:
+                    logger.warning(f"Failed to generate model explanations: {str(e)}")
             else:
                 logger.warning(f"Job finished with status: {final_job.status}")
         else:

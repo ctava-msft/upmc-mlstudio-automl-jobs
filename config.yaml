@@ -137,6 +137,10 @@ output:
     framework: "azure-ml"
     use_case: "secondary-cvd-risk"
   
+  # Model interpretability settings
+  generate_explanations: true
+  explanations_output_path: "./explanations"
+  
   log_level: "INFO"
   log_to_file: true
   log_file_path: "./logs/training.log"
