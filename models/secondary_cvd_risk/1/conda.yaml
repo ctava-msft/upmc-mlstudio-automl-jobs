@@ -1,0 +1,22 @@
+name: automl_env
+channels:
+  - conda-forge
+  - anaconda
+dependencies:
+  - python=3.9.22
+  - pip=24.2
+  - cmake>=3.27
+  - libgomp
+  - numpy=1.23.5
+  - pandas=1.5.3
+  - scikit-learn=1.5.1
+  - holidays=0.70
+  - psutil=5.9.3
+  - pip:
+    - azureml-train-automl-runtime==1.60.0
+    - inference-schema
+    - xgboost<=1.5.2
+    - prophet==1.1.4
+    - azureml-interpret==1.60.0
+    - azureml-defaults==1.60.0
+    - mlflow>=2.9.0
