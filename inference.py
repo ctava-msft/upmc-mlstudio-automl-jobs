@@ -102,10 +102,10 @@ def format_data(sample_dict):
     print(f"Final DataFrame columns: {len(df_final.columns)}")
     print(f"Sample final values: {list(df_final.iloc[0].values)[:5]}...")
     
-    # Instead of converting to array, send as pandas DataFrame format
-    # that preserves column names for the model
+    # Azure ML inference server expects 'input_data' as the key
+    # Use split format to preserve column names and structure
     return {
-        "data": df_final.to_dict('split')  # Split format preserves column names and structure
+        "input_data": df_final.to_dict('split')  # Split format preserves column names and structure
     }
 
 def prepare_data_for_container(sample_input):
@@ -184,9 +184,12 @@ def prepare_data_for_container(sample_input):
     
     return processed_dict
 
-def test_sample(sample_name, sample_data, docker_api_url):
+def test_sample(sample_name, sample_data, docker_api_url, log_func=None):
     """Test a single sample and return results"""
-    print(f"\n=== TESTING {sample_name.upper()} ===")
+    # Use provided log function or default to print
+    log = log_func if log_func else print
+    
+    log(f"\n=== TESTING {sample_name.upper()} ===")
     
     # Process the data to ensure proper formatting for the container
     processed_sample = prepare_data_for_container(sample_data)
@@ -198,40 +201,51 @@ def test_sample(sample_name, sample_data, docker_api_url):
         # Ensure the payload is JSON serializable before sending
         try:
             json.dumps(payload)  # Test serialization
-            print("✓ Payload is JSON serializable")
+            log("✓ Payload is JSON serializable")
         except TypeError as json_error:
-            print(f"⚠ JSON serialization error: {json_error}")
+            log(f"⚠ JSON serialization error: {json_error}")
             return None
         
-        print(f"Sending request to {docker_api_url}...")
+        log(f"Sending request to {docker_api_url}...")
         response = requests.post(docker_api_url, json=payload, timeout=15)
-        print(f"Response status code: {response.status_code}")
+        log(f"Response status code: {response.status_code}")
         
         if response.status_code == 200:
             try:
                 result = response.json()
-                print(f"✓ SUCCESS! {sample_name} prediction result:")
-                print(json.dumps(result, indent=2))
+                log(f"✓ SUCCESS! {sample_name} prediction result:")
+                log(json.dumps(result, indent=2))
                 
-                # Extract and display the risk score
-                if isinstance(result, dict) and 'data' in result:
+                # Extract and display the risk prediction
+                # Handle both list format (e.g., [true/false]) and dict format
+                if isinstance(result, list) and len(result) > 0:
+                    prediction = result[0]
+                    if isinstance(prediction, bool):
+                        risk_level = "HIGH RISK" if prediction else "LOW RISK"
+                        log(f"📈 CVD Risk Prediction: {prediction}")
+                        log(f"📊 Risk Level: {risk_level}")
+                    elif isinstance(prediction, (int, float)):
+                        risk_level = "HIGH RISK" if prediction > 0.5 else "LOW RISK"
+                        log(f"📊 CVD Risk Score: {prediction:.4f}")
+                        log(f"📈 Risk Level: {risk_level}")
+                elif isinstance(result, dict) and 'data' in result:
                     risk_scores = result['data']
                     if risk_scores:
                         risk_score = risk_scores[0] if isinstance(risk_scores[0], (int, float)) else risk_scores[0][0]
-                        print(f"📊 CVD Risk Score: {risk_score:.4f}")
+                        log(f"📊 CVD Risk Score: {risk_score:.4f}")
                         risk_level = "HIGH RISK" if risk_score > 0.5 else "LOW RISK"
-                        print(f"📈 Risk Level: {risk_level}")
+                        log(f"📈 Risk Level: {risk_level}")
                 
                 return result
             except json.JSONDecodeError:
-                print(f"Response is not valid JSON: {response.text[:200]}...")
+                log(f"Response is not valid JSON: {response.text[:200]}...")
                 return None
         else:
-            print(f"Error response: {response.text[:300]}...")
+            log(f"Error response: {response.text[:300]}...")
             return None
             
     except Exception as e:
-        print(f"{sample_name} test failed: {e}")
+        log(f"{sample_name} test failed: {e}")
         return None
 
 def main():
@@ -240,26 +254,42 @@ def main():
     parser.add_argument("--port", default="5001", help="Docker container port (default: 5001)")
     parser.add_argument("--endpoint", default="score", help="API endpoint (default: score)")
     parser.add_argument("--retry", type=int, default=3, help="Number of connection retries (default: 3)")
+    parser.add_argument("--output", default="inference_results.txt", help="Output file for results (default: inference_results.txt)")
     args = parser.parse_args()
     
     host = args.host
     port = int(args.port)
     endpoint = args.endpoint
     max_retries = args.retry
+    output_file = args.output
+    
+    # Initialize output logging
+    output_lines = []
+    
+    def log(message):
+        """Log a message to both console and output list."""
+        print(message)
+        output_lines.append(message)
     
     DOCKER_API_URL = f"http://{host}:{port}/{endpoint}"
-    print(f"Connecting to Docker container at: {DOCKER_API_URL}")
+    log(f"Connecting to Docker container at: {DOCKER_API_URL}")
+    log(f"Timestamp: {datetime.now().isoformat()}")
+    log("")
     
     # Check if the port is open before attempting to connect
     if not check_port_open(host, port):
-        print(f"\nERROR: Could not connect to {host}:{port}")
-        print("Please check that:")
-        print("  1. The Docker container is running")
-        print("  2. The port is correct and exposed")
-        print(f"  3. There are no firewall rules blocking connections to {host}:{port}")
-        print("\nYou can try running:")
-        print(f"  docker ps  # To check running containers")
-        print(f"  docker logs <container_id>  # To check for errors in the container")
+        log(f"\nERROR: Could not connect to {host}:{port}")
+        log("Please check that:")
+        log("  1. The Docker container is running")
+        log("  2. The port is correct and exposed")
+        log(f"  3. There are no firewall rules blocking connections to {host}:{port}")
+        log("\nYou can try running:")
+        log(f"  docker ps  # To check running containers")
+        log(f"  docker logs <container_id>  # To check for errors in the container")
+        # Save output before returning
+        with open(output_file, 'w', encoding='utf-8') as f:
+            f.write('\n'.join(output_lines))
+        print(f"\n📄 Results saved to: {output_file}")
         return
     
     # Create a sample input record with all required fields - LOW CVD RISK
@@ -491,43 +521,66 @@ def main():
     }
 
     # Test both samples
-    print("🏥 Testing Secondary CVD Risk Model with Two Patient Profiles")
-    print("=" * 60)
+    log("🏥 Testing Secondary CVD Risk Model with Two Patient Profiles")
+    log("=" * 60)
     
     # Test negative CVD risk sample
-    neg_result = test_sample("Negative CVD Risk Patient", neg_cvdrisk_input, DOCKER_API_URL)
+    neg_result = test_sample("Negative CVD Risk Patient", neg_cvdrisk_input, DOCKER_API_URL, log)
     
     # Test positive CVD risk sample  
-    pos_result = test_sample("Positive CVD Risk Patient", pos_cvdrisk_input, DOCKER_API_URL)
+    pos_result = test_sample("Positive CVD Risk Patient", pos_cvdrisk_input, DOCKER_API_URL, log)
     
     # Summary comparison
-    print(f"\n" + "=" * 60)
-    print("📊 COMPARISON SUMMARY")
-    print("=" * 60)
+    log(f"\n" + "=" * 60)
+    log("📊 COMPARISON SUMMARY")
+    log("=" * 60)
     
     if neg_result and pos_result:
         try:
-            neg_score = neg_result['data'][0] if isinstance(neg_result['data'][0], (int, float)) else neg_result['data'][0][0]
-            pos_score = pos_result['data'][0] if isinstance(pos_result['data'][0], (int, float)) else pos_result['data'][0][0]
+            # Handle list format with boolean values
+            def extract_prediction(result):
+                if isinstance(result, list) and len(result) > 0:
+                    return result[0]
+                elif isinstance(result, dict) and 'data' in result:
+                    return result['data'][0]
+                return None
             
-            print(f"Low Risk Patient Score:  {neg_score:.4f}")
-            print(f"High Risk Patient Score: {pos_score:.4f}")
-            print(f"Score Difference:        {pos_score - neg_score:.4f}")
+            neg_pred = extract_prediction(neg_result)
+            pos_pred = extract_prediction(pos_result)
             
-            if pos_score > neg_score:
-                print("✅ Model correctly identified higher risk in the high-risk patient")
-            else:
-                print("⚠️  Model did not show expected risk difference")
+            log(f"Low Risk Patient Prediction:  {neg_pred}")
+            log(f"High Risk Patient Prediction: {pos_pred}")
+            
+            # For boolean predictions
+            if isinstance(neg_pred, bool) and isinstance(pos_pred, bool):
+                if pos_pred and not neg_pred:
+                    log("✅ Model correctly identified higher risk in the high-risk patient")
+                elif pos_pred == neg_pred:
+                    log("⚠️  Model predicted same risk for both patients")
+                else:
+                    log("⚠️  Model did not show expected risk difference")
+            # For numeric scores
+            elif isinstance(neg_pred, (int, float)) and isinstance(pos_pred, (int, float)):
+                log(f"Score Difference: {pos_pred - neg_pred:.4f}")
+                if pos_pred > neg_pred:
+                    log("✅ Model correctly identified higher risk in the high-risk patient")
+                else:
+                    log("⚠️  Model did not show expected risk difference")
                 
         except Exception as e:
-            print(f"Could not compare scores: {e}")
+            log(f"Could not compare scores: {e}")
     else:
         if not neg_result:
-            print("❌ Low risk patient test failed")
+            log("❌ Low risk patient test failed")
         if not pos_result:
-            print("❌ High risk patient test failed")
+            log("❌ High risk patient test failed")
 
-    # ...existing code...
+    # Save results to output file
+    log("")
+    log("=" * 60)
+    with open(output_file, 'w', encoding='utf-8') as f:
+        f.write('\n'.join(output_lines))
+    print(f"\n📄 Results saved to: {output_file}")
 
 if __name__ == "__main__":
     main()

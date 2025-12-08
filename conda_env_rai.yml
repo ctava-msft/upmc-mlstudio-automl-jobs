@@ -1,0 +1,52 @@
+# Conda environment for Responsible AI Dashboard model wrapper
+# This environment includes all dependencies needed for:
+# - Azure ML SDK v2 model registration
+# - MLflow model logging and serving
+# - Responsible AI dashboard components
+# - Model interpretability (SHAP, InterpretML)
+
+name: rai_model_env
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    # Azure ML SDK v2 for model registration and management
+    - azure-ai-ml>=1.11.0
+    - azure-identity>=1.12.0
+    
+    # MLflow for model logging and serving
+    - mlflow>=2.0.0
+    
+    # Machine Learning libraries
+    - scikit-learn>=1.0.0
+    - xgboost>=1.5.0
+    - lightgbm>=3.3.0
+    
+    # Data manipulation
+    - pandas>=1.5.0
+    - numpy>=1.23.0
+    
+    # Responsible AI components
+    - raiwidgets>=0.25.0
+    - responsibleai>=0.25.0
+    
+    # Model interpretability
+    - shap>=0.42.0
+    - interpret>=0.4.0
+    - interpret-community>=0.25.0
+    
+    # Fairness assessment
+    - fairlearn>=0.8.0
+    
+    # Visualization
+    - matplotlib>=3.5.0
+    - seaborn>=0.11.0
+    
+    # Utilities
+    - pyyaml
+    - python-dotenv

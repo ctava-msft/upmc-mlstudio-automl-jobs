@@ -1,0 +1,57 @@
+# RAI Dashboard Configuration for Secondary CVD Risk Model
+# This configuration file is used by submit_rai_job.py
+
+# Azure ML Workspace Configuration
+workspace:
+  # These can also be set via environment variables:
+  # AZURE_SUBSCRIPTION_ID, AZURE_RESOURCE_GROUP, AZURE_ML_WORKSPACE
+  subscription_id: null  # Set via environment or fill in here
+  resource_group: null   # Set via environment or fill in here
+  name: null             # Set via environment or fill in here
+
+# Authentication settings
+authentication:
+  # Options: cli, interactive, default
+  # cli: Uses Azure CLI credentials (az login)
+  # interactive: Opens browser for authentication
+  # default: Uses DefaultAzureCredential (managed identity, env vars, etc.)
+  method: cli
+
+# Model Configuration
+model:
+  # Name for the registered model in Azure ML
+  name: secondary-cvd-risk-rai
+  
+  # Path to model with MLflow structure (directory with MLmodel file at root)
+  path: ./models/mlflow_model
+  
+  # Force re-register as MLflow model
+  force_reregister: true
+  
+  # Version - will be auto-assigned on re-registration
+  # version: "1"
+
+# Data Configuration
+data:
+  # Name for training data asset (already registered in Azure ML)
+  train_data_name: secondary-cvd-risk
+  
+  # Name for test data asset (using same dataset for both train/test)
+  test_data_name: secondary-cvd-risk
+  
+  # Skip registration - use existing registered assets
+  skip_registration: true
+  
+  # Data asset version
+  version: "1"
+  
+  # Target column for classification/regression
+  target_column: MACE
+
+# Pipeline Configuration
+pipeline:
+  # Compute cluster name for running the RAI pipeline
+  compute: automl
+  
+  # Experiment name (optional override)
+  experiment_name: null

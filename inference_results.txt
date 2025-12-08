@@ -1,0 +1,37 @@
+Connecting to Docker container at: http://127.0.0.1:5001/score
+Timestamp: 2025-12-08T12:42:15.349957
+
+🏥 Testing Secondary CVD Risk Model with Two Patient Profiles
+============================================================
+
+=== TESTING NEGATIVE CVD RISK PATIENT ===
+✓ Payload is JSON serializable
+Sending request to http://127.0.0.1:5001/score...
+Response status code: 200
+✓ SUCCESS! Negative CVD Risk Patient prediction result:
+[
+  0
+]
+📊 CVD Risk Score: 0.0000
+📈 Risk Level: LOW RISK
+
+=== TESTING POSITIVE CVD RISK PATIENT ===
+✓ Payload is JSON serializable
+Sending request to http://127.0.0.1:5001/score...
+Response status code: 200
+✓ SUCCESS! Positive CVD Risk Patient prediction result:
+[
+  1
+]
+📊 CVD Risk Score: 1.0000
+📈 Risk Level: HIGH RISK
+
+============================================================
+📊 COMPARISON SUMMARY
+============================================================
+Low Risk Patient Prediction:  0
+High Risk Patient Prediction: 1
+Score Difference: 1.0000
+✅ Model correctly identified higher risk in the high-risk patient
+
+============================================================

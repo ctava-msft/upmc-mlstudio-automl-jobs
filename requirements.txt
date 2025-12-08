@@ -3,15 +3,22 @@ azure-ai-ml>=1.11.0
 azure-identity>=1.12.0
 
 # Data handling
-numpy
-pandas
-scikit-learn
+numpy>=1.23.0
+pandas>=1.5.0
+scikit-learn>=1.0.0
+
+# MLflow for model logging
+mlflow>=2.0.0
 
 # Model interpretability and visualization
 shap>=0.42.0
 interpret>=0.4.0
 matplotlib>=3.5.0
 seaborn>=0.11.0
+
+# Responsible AI components
+raiwidgets>=0.25.0
+responsibleai>=0.25.0
 
 # Configuration and utilities
 python-dotenv
