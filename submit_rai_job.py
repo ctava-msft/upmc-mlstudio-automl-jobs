@@ -266,6 +266,7 @@ def create_rai_pipeline(
             train_dataset=train_data,
             test_dataset=test_data,
             target_column_name=target_column_name,
+            use_model_dependency=True,  # Install model's conda dependencies
         )
         create_rai_job.set_limits(timeout=3600)  # 1 hour
         

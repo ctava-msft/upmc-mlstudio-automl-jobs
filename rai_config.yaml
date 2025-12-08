@@ -19,17 +19,14 @@ authentication:
 
 # Model Configuration
 model:
-  # Name for the registered model in Azure ML
-  name: secondary-cvd-risk-rai
+  # Name for the registered model in Azure ML (AutoML model from completed job)
+  name: azureml_secondary-cvd-risk-20251208-160440_0_output_mlflow_log_model_1742768066
   
-  # Path to model with MLflow structure (directory with MLmodel file at root)
-  path: ./models/mlflow_model
+  # Use existing model, no need to re-register
+  force_reregister: false
   
-  # Force re-register as MLflow model
-  force_reregister: true
-  
-  # Version - will be auto-assigned on re-registration
-  # version: "1"
+  # Version of the AutoML model
+  version: "1"
 
 # Data Configuration
 data:
