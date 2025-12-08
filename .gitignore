@@ -40,7 +40,6 @@ data/preprocessed/
 temp_preprocessed_*.csv
 
 # Models and artifacts
-*.pkl
 *.h5
 *.onnx
 *.joblib
