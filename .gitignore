@@ -71,7 +71,6 @@ mlruns/
 
 # Jupyter
 .ipynb_checkpoints/
-*.ipynb
 
 # Azure ML
 .azureml/
