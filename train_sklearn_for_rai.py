@@ -162,10 +162,31 @@ def save_mlflow_model(model, feature_names: list, output_path: str, logger: logg
     
     os.makedirs(output_path, exist_ok=True)
     
-    # Save model using sklearn flavor
+    # Define RAI-compatible conda environment
+    # RAI uses Python 3.9 with NumPy 1.x - must match!
+    conda_env = {
+        'name': 'mlflow-env',
+        'channels': ['conda-forge'],
+        'dependencies': [
+            'python=3.9',
+            'pip<=23.3',
+            {
+                'pip': [
+                    'mlflow>=2.0,<2.10',
+                    'numpy>=1.21,<2.0',
+                    'pandas>=1.3,<2.0',
+                    'scikit-learn>=1.0,<1.4',
+                    'scipy>=1.7,<2.0',
+                ]
+            }
+        ]
+    }
+    
+    # Save model using sklearn flavor with RAI-compatible environment
     mlflow.sklearn.save_model(
         sk_model=model,
         path=output_path,
+        conda_env=conda_env,
         serialization_format=mlflow.sklearn.SERIALIZATION_FORMAT_PICKLE
     )
     
@@ -174,7 +195,7 @@ def save_mlflow_model(model, feature_names: list, output_path: str, logger: logg
     with open(feature_names_path, 'w') as f:
         json.dump(feature_names, f, indent=2)
     
-    logger.info(f"Model saved successfully")
+    logger.info(f"Model saved successfully with RAI-compatible environment")
     return output_path
 
 

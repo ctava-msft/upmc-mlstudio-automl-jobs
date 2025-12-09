@@ -1,0 +1,14 @@
+name: rai-compatible
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - pip:
+    - numpy>=1.21,<2.0
+    - pandas>=1.3,<2.0
+    - scikit-learn>=1.0,<1.4
+    - mlflow>=2.0,<2.10
+    - scipy>=1.7,<2.0
+    - pyarrow>=10.0,<15.0
