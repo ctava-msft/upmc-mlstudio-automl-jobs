@@ -71,21 +71,24 @@ def demo_shap_explanations():
     output_dir.mkdir(exist_ok=True)
     
     # For tree-based models, use TreeExplainer (much faster)
+    # Use the new SHAP API that returns Explanation objects
     explainer = shap.TreeExplainer(model)
-    shap_values = explainer.shap_values(X_test[:100])  # Explain first 100 test samples
     
-    # For binary classification, shap_values is a list with two arrays
-    # Use the positive class (index 1)
-    if isinstance(shap_values, list):
-        shap_values_pos = shap_values[1]
+    # Get SHAP values using the new API (returns Explanation object)
+    X_test_df = pd.DataFrame(X_test[:100], columns=feature_names)
+    shap_values = explainer(X_test_df)
+    
+    # For binary classification with the new API, get values for positive class
+    # shap_values.values has shape (n_samples, n_features, n_classes)
+    if len(shap_values.values.shape) == 3:
+        shap_values_pos = shap_values[:, :, 1]  # positive class
     else:
         shap_values_pos = shap_values
     
     # 1. Feature importance plot
     print("Creating feature importance plot...")
     plt.figure(figsize=(10, 6))
-    shap.summary_plot(shap_values_pos, X_test[:100], feature_names=feature_names, 
-                     plot_type='bar', show=False)
+    shap.plots.bar(shap_values_pos, show=False)
     plt.title('SHAP Feature Importance')
     plt.tight_layout()
     plt.savefig(output_dir / 'shap_feature_importance.png', dpi=300, bbox_inches='tight')
@@ -94,7 +97,7 @@ def demo_shap_explanations():
     # 2. Summary plot (beeswarm)
     print("Creating summary plot...")
     plt.figure(figsize=(10, 8))
-    shap.summary_plot(shap_values_pos, X_test[:100], feature_names=feature_names, show=False)
+    shap.plots.beeswarm(shap_values_pos, show=False)
     plt.title('SHAP Summary Plot')
     plt.tight_layout()
     plt.savefig(output_dir / 'shap_summary.png', dpi=300, bbox_inches='tight')
@@ -103,29 +106,21 @@ def demo_shap_explanations():
     # 3. Waterfall plot for first prediction
     print("Creating waterfall plot...")
     plt.figure(figsize=(10, 8))
-    shap.waterfall_plot(
-        shap.Explanation(
-            values=shap_values_pos[0], 
-            base_values=explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
-            data=X_test[0],
-            feature_names=feature_names
-        ),
-        show=False
-    )
+    shap.plots.waterfall(shap_values_pos[0], show=False)
     plt.title('SHAP Waterfall Plot (First Sample)')
     plt.tight_layout()
     plt.savefig(output_dir / 'shap_waterfall.png', dpi=300, bbox_inches='tight')
     plt.close()
     
     # 4. Dependence plot for most important feature
-    most_important_feature = feature_names[np.abs(shap_values_pos).mean(0).argmax()]
+    # Get the most important feature index
+    mean_abs_shap = np.abs(shap_values_pos.values).mean(0)
+    most_important_idx = mean_abs_shap.argmax()
+    most_important_feature = feature_names[most_important_idx]
     print(f"Creating dependence plot for: {most_important_feature}")
     
     plt.figure(figsize=(10, 6))
-    shap.dependence_plot(
-        most_important_feature, shap_values_pos, X_test[:100], 
-        feature_names=feature_names, show=False
-    )
+    shap.plots.scatter(shap_values_pos[:, most_important_idx], show=False)
     plt.title(f'SHAP Dependence Plot: {most_important_feature}')
     plt.tight_layout()
     plt.savefig(output_dir / 'shap_dependence.png', dpi=300, bbox_inches='tight')
@@ -133,10 +128,11 @@ def demo_shap_explanations():
     
     # 5. Force plot for individual prediction (save as HTML)
     print("Creating force plot...")
+    base_value = shap_values_pos[0].base_values
     force_plot = shap.force_plot(
-        explainer.expected_value[1] if isinstance(explainer.expected_value, list) else explainer.expected_value,
-        shap_values_pos[0],
-        X_test[0],
+        base_value,
+        shap_values_pos[0].values,
+        X_test_df.iloc[0],
         feature_names=feature_names
     )
     shap.save_html(str(output_dir / 'shap_force_plot.html'), force_plot)

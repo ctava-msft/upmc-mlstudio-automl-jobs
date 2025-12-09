@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from azure.ai.ml import MLClient, automl, Input
 from azure.ai.ml.constants import AssetTypes
 from azure.ai.ml.automl import ClassificationPrimaryMetrics
+from azure.ai.ml.entities import ResourceConfiguration
 from azure.identity import AzureCliCredential
 
 # Load environment variables
@@ -76,14 +77,24 @@ def main():
     )
     
     # Configure AutoML classification job
+    # NOTE: Using serverless compute is REQUIRED for RAI dashboard generation
+    # Per Microsoft docs: "Responsible AI dashboards can't be generated for an existing 
+    # Automated ML model. The dashboard is created only for the best recommended model 
+    # when you create a new Automated ML job" with serverless compute.
     classification_job = automl.classification(
-        compute="automl",
+        # compute="automl",  # Don't use named compute - use serverless instead
         experiment_name="secondary-cvd-risk-automl",
         training_data=training_data,
         target_column_name="MACE",
         primary_metric=ClassificationPrimaryMetrics.AUC_WEIGHTED,
         n_cross_validations=5,
-        enable_model_explainability=True,  # Enable for RAI
+        enable_model_explainability=True,  # Enable for RAI dashboard generation
+    )
+    
+    # Use serverless compute - REQUIRED for RAI dashboard generation during AutoML
+    classification_job.resources = ResourceConfiguration(
+        instance_type="Standard_E4s_v3",
+        instance_count=1
     )
     
     # Set job name
@@ -111,11 +122,12 @@ def main():
     classification_job.set_featurization(mode="auto")
     
     logger.info("AutoML job configuration:")
-    logger.info(f"  Compute: automl")
+    logger.info(f"  Compute: Serverless (Standard_E4s_v3)")
     logger.info(f"  Target column: MACE")
     logger.info(f"  Primary metric: AUC_WEIGHTED")
     logger.info(f"  Timeout: {args.timeout_minutes} minutes")
-    logger.info(f"  Max trials: 10")
+    logger.info(f"  Max trials: 1")
+    logger.info(f"  Model explainability: Enabled (RAI dashboard will be generated)")
     
     # Submit the job
     logger.info("Submitting AutoML job...")
@@ -134,12 +146,15 @@ def main():
         
         if final_job.status == "Completed":
             logger.info("✅ AutoML job completed successfully!")
-            logger.info("The best model has been registered. You can now run the RAI dashboard.")
             logger.info("")
-            logger.info("Next steps:")
-            logger.info("1. Find the registered model name from the job outputs in Azure ML Studio")
-            logger.info("2. Update rai_config.yaml with the model name")
-            logger.info("3. Run: python submit_rai_job.py")
+            logger.info("RAI Dashboard:")
+            logger.info("  Since serverless compute and enable_model_explainability=True were used,")
+            logger.info("  a Responsible AI dashboard should be automatically generated.")
+            logger.info("  Go to Azure ML Studio -> Jobs -> Find this job -> Models tab")
+            logger.info("  Click on the best model to view the RAI dashboard.")
+            logger.info("")
+            logger.info("Note: You do NOT need to run submit_rai_job.py separately!")
+            logger.info("      The RAI dashboard is generated as part of the AutoML job.")
         else:
             logger.error(f"❌ AutoML job ended with status: {final_job.status}")
             return 1
