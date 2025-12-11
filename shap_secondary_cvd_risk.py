@@ -1,7 +1,21 @@
 """
 SHAP Explanations for Secondary CVD Risk Model
 This script generates SHAP explanations for the sklearn model trained on secondary CVD risk data.
-Uses MLflow to load the AutoML model (handles AzureML dependencies automatically).
+
+NOTE ON AUTOML MODELS:
+The Azure AutoML-generated model (models/secondary_cvd_risk/1/) has dependencies on:
+- azureml-train-automl-runtime (requires Python 3.8-3.11, not 3.12+)
+- ONNX runtime DLLs (can have compatibility issues on Windows)
+
+WORKAROUND FOR PRODUCTION:
+1. Option A: Use a dedicated conda environment with Python 3.9 and azureml-train-automl-runtime==1.60.0
+   conda create -n automl_env python=3.9
+   conda activate automl_env
+   pip install azureml-train-automl-runtime==1.60.0 shap matplotlib seaborn mlflow
+
+2. Option B: Extract the trained sklearn estimator and save it separately (see convert_to_mlflow.py)
+
+3. Option C: Use this script with sklearn_rai_model (pure sklearn, no Azure dependencies)
 """
 
 import pandas as pd
@@ -29,8 +43,8 @@ def run_shap_analysis():
     print("SHAP Explanations for Secondary CVD Risk Model (AutoML)")
     print("=" * 70)
     
-    # Paths - Using the AutoML-generated model directory (for MLflow loading)
-    model_dir = Path("./models/secondary_cvd_risk/1")
+    # Paths - Using the extracted sklearn model from AutoML
+    model_path = Path("./models/secondary_cvd_risk/sklearn_model_extracted.pkl")
     # Use the original data source
     data_path = Path("./data/secondary_cvd_risk_min/secondary-cvd-risk.csv")
     output_dir = Path("./explanations_secondary_cvd_risk")
@@ -38,26 +52,31 @@ def run_shap_analysis():
     # Create output directory
     output_dir.mkdir(exist_ok=True)
     print(f"Output directory: {output_dir}")
-    print(f"Model directory: {model_dir}")
+    print(f"Model path: {model_path}")
     print(f"Data path: {data_path}")
     
-    # Load the trained AutoML model using MLflow
-    print("\nLoading AutoML-trained sklearn model via MLflow...")
+    # Check if extracted model exists
+    if not model_path.exists():
+        print(f"\nERROR: Extracted model not found at {model_path}")
+        print("\nPlease run the extraction script first:")
+        print("  python extract_automl_model.py")
+        print("\nThis will extract the sklearn estimator from the AutoML model")
+        print("and save it as a standalone pickle file without Azure ML dependencies.")
+        return
+    
+    # Load the extracted sklearn model
+    print("\nLoading extracted sklearn model from AutoML...")
     try:
-        # MLflow can load the model using the sklearn flavor, which avoids the azureml.training dependency
-        model = mlflow.sklearn.load_model(str(model_dir))
+        import pickle
+        with open(model_path, 'rb') as f:
+            model = pickle.load(f)
+        print(f"✓ Model loaded successfully")
     except Exception as e:
-        print(f"MLflow sklearn loading failed: {e}")
-        print("Trying pyfunc loader...")
-        try:
-            model_pyfunc = mlflow.pyfunc.load_model(str(model_dir))
-            # Get the underlying sklearn model
-            model = model_pyfunc._model_impl.sklearn_model
-        except Exception as e2:
-            print(f"PyFunc loading also failed: {e2}")
-            print("\nNote: The AutoML model has dependencies on azureml-train-automl-runtime.")
-            print("You may need to install: pip install azureml-train-automl-runtime==1.60.0")
-            return
+        print(f"✗ Failed to load model: {e}")
+        print("\nPlease re-run the extraction script:")
+        print("  python extract_automl_model.py")
+        return
+    
     print(f"Model type: {type(model).__name__}")
     
     # Load the data
