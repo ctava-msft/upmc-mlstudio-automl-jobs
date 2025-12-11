@@ -1,6 +1,7 @@
 """
 SHAP Explanations for Secondary CVD Risk Model
 This script generates SHAP explanations for the sklearn model trained on secondary CVD risk data.
+Uses MLflow to load the AutoML model (handles AzureML dependencies automatically).
 """
 
 import pandas as pd
@@ -8,7 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-import pickle
 import json
 import warnings
 warnings.filterwarnings('ignore')
@@ -19,38 +19,46 @@ def run_shap_analysis():
     try:
         import shap
         from sklearn.model_selection import train_test_split
+        import mlflow
     except ImportError as e:
         print(f"Required libraries not installed: {e}")
-        print("Install with: pip install shap scikit-learn matplotlib seaborn")
+        print("Install with: pip install shap scikit-learn matplotlib seaborn mlflow")
         return
     
     print("=" * 70)
-    print("SHAP Explanations for Secondary CVD Risk Model")
+    print("SHAP Explanations for Secondary CVD Risk Model (AutoML)")
     print("=" * 70)
     
-    # Paths
-    model_path = Path("./models/sklearn_rai_model/model.pkl")
-    feature_names_path = Path("./models/sklearn_rai_model/feature_names.json")
-    # Use the preprocessed test data that was saved during training (already numeric)
-    data_path = Path("./models/test_data.csv")
-    train_data_path = Path("./models/train_data.csv")
+    # Paths - Using the AutoML-generated model directory (for MLflow loading)
+    model_dir = Path("./models/secondary_cvd_risk/1")
+    # Use the original data source
+    data_path = Path("./data/secondary_cvd_risk_min/secondary-cvd-risk.csv")
     output_dir = Path("./explanations_secondary_cvd_risk")
     
     # Create output directory
     output_dir.mkdir(exist_ok=True)
     print(f"Output directory: {output_dir}")
+    print(f"Model directory: {model_dir}")
+    print(f"Data path: {data_path}")
     
-    # Load the trained model
-    print("\nLoading trained sklearn model...")
-    with open(model_path, 'rb') as f:
-        model = pickle.load(f)
+    # Load the trained AutoML model using MLflow
+    print("\nLoading AutoML-trained sklearn model via MLflow...")
+    try:
+        # MLflow can load the model using the sklearn flavor, which avoids the azureml.training dependency
+        model = mlflow.sklearn.load_model(str(model_dir))
+    except Exception as e:
+        print(f"MLflow sklearn loading failed: {e}")
+        print("Trying pyfunc loader...")
+        try:
+            model_pyfunc = mlflow.pyfunc.load_model(str(model_dir))
+            # Get the underlying sklearn model
+            model = model_pyfunc._model_impl.sklearn_model
+        except Exception as e2:
+            print(f"PyFunc loading also failed: {e2}")
+            print("\nNote: The AutoML model has dependencies on azureml-train-automl-runtime.")
+            print("You may need to install: pip install azureml-train-automl-runtime==1.60.0")
+            return
     print(f"Model type: {type(model).__name__}")
-    
-    # Load feature names
-    print("Loading feature names...")
-    with open(feature_names_path, 'r') as f:
-        feature_names = json.load(f)
-    print(f"Number of features: {len(feature_names)}")
     
     # Load the data
     print(f"\nLoading data from: {data_path}")
@@ -60,12 +68,38 @@ def run_shap_analysis():
     # Target column
     target_column = 'MACE'
     
-    # Prepare features
-    X = df.drop(columns=[target_column])
+    # Columns to drop (non-feature columns)
+    columns_to_drop = [
+        target_column,
+        'RACE_LABEL', 'ETHNICITY_DETAILED', 'ADMITDATE', 'PROC_DATE', 
+        'DISCHARGEDATE', 'TOBACCO_STATUS_LABEL', 'ALCOHOL_STATUS_LABEL',
+        'ILL_DRUG_STATUS_LABEL', 'LAST_MED_ENC_TYPE'
+    ]
+    columns_to_drop = [col for col in columns_to_drop if col in df.columns]
+    
+    # Prepare features - drop non-feature columns
+    X = df.drop(columns=columns_to_drop)
     y = df[target_column]
     
-    # Ensure feature order matches what the model expects
-    X = X[feature_names]
+    # Handle categorical columns - encode them for the model
+    categorical_cols = X.select_dtypes(include=['object']).columns.tolist()
+    print(f"Categorical columns to encode: {categorical_cols}")
+    
+    # Encode categorical columns using label encoding
+    from sklearn.preprocessing import LabelEncoder
+    label_encoders = {}
+    for col in categorical_cols:
+        le = LabelEncoder()
+        X[col] = X[col].fillna('UNKNOWN').astype(str)
+        X[col] = le.fit_transform(X[col])
+        label_encoders[col] = le
+    
+    # Fill numeric NaN values with 0
+    X = X.fillna(0)
+    
+    # Get feature names from the processed data
+    feature_names = list(X.columns)
+    print(f"Number of features: {len(feature_names)}")
     
     print(f"Features shape: {X.shape}")
     print(f"Target distribution: {y.value_counts().to_dict()}")
