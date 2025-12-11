@@ -77,7 +77,11 @@ try:
         probabilities = model.predict_proba(X)
         print(f"✓ Predict_proba successful")
         print(f"  Sample probabilities shape: {probabilities.shape}")
-        print(f"  Sample positive class probs: {probabilities[:5, 1]}")
+        # Handle both DataFrame and ndarray returns
+        if isinstance(probabilities, pd.DataFrame):
+            print(f"  Sample positive class probs: {probabilities.iloc[:5, 1].values}")
+        else:
+            print(f"  Sample positive class probs: {probabilities[:5, 1]}")
     
 except Exception as e:
     print(f"✗ Prediction failed: {e}")
@@ -110,29 +114,62 @@ try:
         if hasattr(model, 'steps'):
             final_estimator = model.steps[-1][1]
             print(f"  Final estimator: {type(final_estimator).__name__}")
+            print(f"  Module: {type(final_estimator).__module__}")
+            
+            # Azure ML wraps lightgbm - need to get the actual lgbm model
+            if hasattr(final_estimator, 'model'):
+                lgbm_model = final_estimator.model
+                print(f"  Underlying model: {type(lgbm_model).__name__}")
+            elif hasattr(final_estimator, '_model'):
+                lgbm_model = final_estimator._model
+                print(f"  Underlying model: {type(lgbm_model).__name__}")
+            else:
+                # Try to use it as-is
+                lgbm_model = final_estimator
+                print(f"  No unwrapping needed")
             
             # Need to transform X first
             X_transformed = X_sample.copy()
             for name, transformer in model.steps[:-1]:
                 X_transformed = transformer.transform(X_transformed)
             
-            explainer = shap.TreeExplainer(final_estimator)
-            print(f"✓ TreeExplainer created on final estimator")
+            # Convert to numpy array if needed
+            if hasattr(X_transformed, 'values'):
+                X_transformed = X_transformed.values
+            
+            print(f"  Transformed data shape: {X_transformed.shape}")
+            
+            explainer = shap.TreeExplainer(lgbm_model)
+            print(f"✓ TreeExplainer created on underlying LightGBM model")
             X_sample = X_transformed
     
-    # Calculate SHAP values
-    shap_values = explainer(X_sample)
-    print(f"✓ SHAP values calculated")
-    print(f"  Shape: {shap_values.values.shape}")
-    
-    # Check if binary classification
-    if len(shap_values.values.shape) == 3:
-        print(f"  Binary classification detected (shape has 3 dimensions)")
-        shap_values_pos = shap_values[:, :, 1]
-        print(f"  Positive class SHAP values shape: {shap_values_pos.values.shape}")
-    else:
-        shap_values_pos = shap_values
-        print(f"  Single output SHAP values")
+    # Calculate SHAP values using the legacy API (more stable for LightGBM)
+    try:
+        shap_values_raw = explainer.shap_values(X_sample)
+        print(f"✓ SHAP values calculated (legacy API)")
+        
+        # For binary classification, shap_values returns a list of arrays
+        if isinstance(shap_values_raw, list):
+            print(f"  Binary classification (list of {len(shap_values_raw)} arrays)")
+            print(f"  Negative class shape: {shap_values_raw[0].shape}")
+            print(f"  Positive class shape: {shap_values_raw[1].shape}")
+            shap_values_pos = shap_values_raw[1]  # Positive class
+        else:
+            print(f"  Single output shape: {shap_values_raw.shape}")
+            shap_values_pos = shap_values_raw
+    except Exception as e:
+        print(f"  Legacy API failed: {e}")
+        print(f"  Trying modern API...")
+        shap_values = explainer(X_sample)
+        print(f"✓ SHAP values calculated")
+        
+        if hasattr(shap_values, 'values'):
+            if len(shap_values.values.shape) == 3:
+                shap_values_pos = shap_values[:, :, 1].values
+            else:
+                shap_values_pos = shap_values.values
+        else:
+            shap_values_pos = shap_values
     
     print(f"✓ SHAP analysis ready for full dataset")
     
