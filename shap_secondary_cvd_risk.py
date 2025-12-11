@@ -33,18 +33,20 @@ def run_shap_analysis():
     try:
         import shap
         from sklearn.model_selection import train_test_split
-        import mlflow
     except ImportError as e:
         print(f"Required libraries not installed: {e}")
-        print("Install with: pip install shap scikit-learn matplotlib seaborn mlflow")
+        print("Install with: pip install shap scikit-learn matplotlib seaborn")
         return
     
     print("=" * 70)
     print("SHAP Explanations for Secondary CVD Risk Model (AutoML)")
     print("=" * 70)
     
-    # Paths - Using the extracted sklearn model from AutoML
-    model_path = Path("./models/secondary_cvd_risk/sklearn_model_extracted.pkl")
+    # Paths - Using sklearn RAI model (pure sklearn, no Azure dependencies)
+    # Note: The AutoML model at models/secondary_cvd_risk/1/ has ONNX/Azure ML dependencies
+    # that cause DLL loading issues on Windows. This sklearn_rai_model is a pure sklearn
+    # model trained on the same data and works without any special dependencies.
+    model_path = Path("./models/sklearn_rai_model/model.pkl")
     # Use the original data source
     data_path = Path("./data/secondary_cvd_risk_min/secondary-cvd-risk.csv")
     output_dir = Path("./explanations_secondary_cvd_risk")
@@ -55,26 +57,30 @@ def run_shap_analysis():
     print(f"Model path: {model_path}")
     print(f"Data path: {data_path}")
     
-    # Check if extracted model exists
+    # Check if model exists
     if not model_path.exists():
-        print(f"\nERROR: Extracted model not found at {model_path}")
-        print("\nPlease run the extraction script first:")
-        print("  python extract_automl_model.py")
-        print("\nThis will extract the sklearn estimator from the AutoML model")
-        print("and save it as a standalone pickle file without Azure ML dependencies.")
+        print(f"\nERROR: Model not found at {model_path}")
+        print("\nAvailable models:")
+        print("  1. models/sklearn_rai_model/model.pkl (pure sklearn)")
+        print("  2. models/secondary_cvd_risk/1/model.pkl (AutoML - requires Azure ML runtime)")
         return
     
-    # Load the extracted sklearn model
-    print("\nLoading extracted sklearn model from AutoML...")
+    # Load the sklearn model
+    print("\nLoading sklearn model...")
     try:
         import pickle
+        import numpy as np
+        
+        # Handle numpy compatibility for older pickles
+        import sys
+        if not hasattr(np, '_core'):
+            np._core = np.core
+        
         with open(model_path, 'rb') as f:
             model = pickle.load(f)
-        print(f"✓ Model loaded successfully")
+        print("[OK] Model loaded successfully")
     except Exception as e:
-        print(f"✗ Failed to load model: {e}")
-        print("\nPlease re-run the extraction script:")
-        print("  python extract_automl_model.py")
+        print(f"[ERROR] Failed to load model: {e}")
         return
     
     print(f"Model type: {type(model).__name__}")
